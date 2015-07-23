@@ -86,9 +86,6 @@ NOT		(?:not)
 LE		<=
 
 WHITESPACE	[\n\f\r\t\v]*
-BLOCK_COMMENT_START		"(*"
-BLOCK_COMMENT_END		"*)"
-INLINE_COMMENT_START		"--"
   /*
    LET_STMT
    EOF
@@ -162,7 +159,7 @@ INLINE_COMMENT_START		"--"
   *
   */
 
-<*>\n { curr_lineno++; }
+\n { curr_lineno++; }
 
   /* Generate an error if the end of the block comment is found,
      without first finding its beginning.
@@ -175,10 +172,13 @@ INLINE_COMMENT_START		"--"
   /****************************************************************************
 		Inline comments
 	 ***************************************************************************/
-{INLINE_COMMENT_START} { BEGIN(INLINE_COMMENT); }
+"--" { BEGIN(INLINE_COMMENT); }
 
   /* Stop inline comment once new line is encountered */
-<INLINE_COMMENT>\n { BEGIN(INITIAL); }
+<INLINE_COMMENT>\n {
+  curr_lineno++;
+	BEGIN(INITIAL);
+}
 
   /* Ignore everything in the inline comment except the new line */
 <INLINE_COMMENT>[^\n]+	{}
@@ -206,6 +206,7 @@ INLINE_COMMENT_START		"--"
   ")" ; /* Eat a lonely right paren */
   "(" ; /* Eat a lonely left paren */
   "*" ; /* Eat a lonely star */
+  \n curr_lineno++; /* increment the line count */
 }
 
   /*
@@ -219,6 +220,22 @@ INLINE_COMMENT_START		"--"
    */
   BEGIN(INITIAL);
 	return ERROR;
+
+}
+
+  /****************************************************************************
+		Strings
+	 ***************************************************************************/
+\" {
+	BEGIN(STRING);
+}
+
+<STRING>\" {
+	BEGIN(INITIAL);
+}
+
+<STRING>"\n" {
+	printf("\nMarker 0\n");
 }
 
 %%
