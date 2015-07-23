@@ -120,41 +120,41 @@ INLINE_COMMENT_START		"--"
  /*
   *  The multiple-character operators.
   */
-{DARROW}	{ return (DARROW); }
-
-{INT_CONST}		{ return (INT_CONST); }
-{ASSIGN}		{ return (ASSIGN); }
+	/* {DARROW}	{ return (DARROW); } */
+	/*  */
+	/* {INT_CONST}		{ return (INT_CONST); } */
+	/* {ASSIGN}		{ return (ASSIGN); } */
 
  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
-{CLASS}			{ return (CLASS); }
-{ELSE}			{ return (ELSE); }
-{FI}			{ return (FI); }
-{IF}			{ return (IF); }
-{IN}			{ return (IN); }
-{INHERITS}			{ return (INHERITS); }
-{LET}			{ return (LET); }
-{LOOP}			{ return (LOOP); }
-{POOL}			{ return (POOL); }
-{THEN}			{ return (THEN); }
-{WHILE}			{ return (WHILE); }
-{CASE}			{ return (CASE); }
-{ESAC}			{ return (ESAC); }
-{OF}			{ return (OF); }
-{NEW}			{ return (NEW); }
-{ISVOID}			{ return (ISVOID); }
-{NOT}		{ return (NOT); }
-{LE}		{ return (LE); }
+	/* {CLASS}			{ return (CLASS); } */
+	/* {ELSE}			{ return (ELSE); } */
+	/* {FI}			{ return (FI); } */
+	/* {IF}			{ return (IF); } */
+	/* {IN}			{ return (IN); } */
+	/* {INHERITS}			{ return (INHERITS); } */
+	/* {LET}			{ return (LET); } */
+	/* {LOOP}			{ return (LOOP); } */
+	/* {POOL}			{ return (POOL); } */
+	/* {THEN}			{ return (THEN); } */
+	/* {WHILE}			{ return (WHILE); } */
+	/* {CASE}			{ return (CASE); } */
+	/* {ESAC}			{ return (ESAC); } */
+	/* {OF}			{ return (OF); } */
+	/* {NEW}			{ return (NEW); } */
+	/* {ISVOID}			{ return (ISVOID); } */
+	/* {NOT}		{ return (NOT); } */
+	/* {LE}		{ return (LE); } */
 
  /*
   *  Boolean constants
 	*  Save matched text and return the token
 	*/
-{BOOL_CONST} {
-	return (BOOL_CONST);
-}
+	/* {BOOL_CONST} { */
+	/*	return (BOOL_CONST); */
+	/* } */
 
  /*
   *  String constants (C syntax)
@@ -180,9 +180,13 @@ INLINE_COMMENT_START		"--"
 	* Block comments can be nested.
 	*/
 
-{BLOCK_COMMENT_START} {
+"*)" {
+  printf("Unmatched *)\n");
+  return ERROR;
+}
+
+"(*" {
 	blockCommentNestingLevel++;
-  printf("Marker 0\n");
 	BEGIN(BLOCK_COMMENT);
 }
 
@@ -190,16 +194,17 @@ INLINE_COMMENT_START		"--"
 	 * Can't have EOF in the middle of a block comment
 	 */
 <BLOCK_COMMENT,BLOCK_COMMENT_END_CHECK><<EOF>>	{
+  printf("EOF in comment\n");
 	return (ERROR);
 }
 
 	/*
-	 * Ignore anything in the block comment
+	 * Ignore anything in the block comment except "*"
 	 */
 <BLOCK_COMMENT>[^*]*	;
 
 	/*
-	 * Once a "*" is seen, it could indicate and and of a block comment.
+	 * Once a "*" is seen, it could indicate end of a block comment.
 	 */
 <BLOCK_COMMENT>"*"+	{
 	BEGIN(BLOCK_COMMENT_END_CHECK);
