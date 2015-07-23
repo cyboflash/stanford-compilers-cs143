@@ -47,7 +47,6 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 unsigned int blockCommentNestingLevel = 0;
-unsigned int columnNo = 1;
 
 %}
 
@@ -55,7 +54,6 @@ unsigned int columnNo = 1;
   * Conditions
   */
 %x BLOCK_COMMENT
-%x BLOCK_COMMENT_END_CHECK
 %x INLINE_COMMENT
 %x STRING
 
@@ -164,36 +162,37 @@ INLINE_COMMENT_START		"--"
   *
   */
 
-  /*
+<*>\n { curr_lineno++; }
+
+  /* Generate an error if the end of the block comment is found,
+     without first finding its beginning.
+   */
+"*)" {
+	cool_yylval.error_msg = "Unmatched *)";
+	return ERROR;
+}
+
+  /****************************************************************************
 		Inline comments
-	*/
+	 ***************************************************************************/
 {INLINE_COMMENT_START} { BEGIN(INLINE_COMMENT); }
 
   /* Stop inline comment once new line is encountered */
 <INLINE_COMMENT>\n { BEGIN(INITIAL); }
 
-  /* Ignore everything in the inline comment */
-<INLINE_COMMENT>[^\n]+	;
+  /* Ignore everything in the inline comment except the new line */
+<INLINE_COMMENT>[^\n]+	{}
 
-<*>\n { curr_lineno++; columnNo = 1;}
-<*>[^\n] { columnNo++;}
 
- /*
-	* Block comments.
-	* Block comments can be nested.
-	*/
+  /****************************************************************************
+	  Block comments
 
-"*)" {
-	/* printf("Unmatched *)\n"); */
-	return ERROR;
-}
+	  Block comments can be nested.
+	 ***************************************************************************/
 
-<INITIAL>"(*" {
+<INITIAL,BLOCK_COMMENT>"(*" {
 	blockCommentNestingLevel++;
 	BEGIN(BLOCK_COMMENT);
-}
-<BLOCK_COMMENT>"(*" {
-	blockCommentNestingLevel++;
 }
 
 <BLOCK_COMMENT>"*)" {
@@ -203,18 +202,23 @@ INLINE_COMMENT_START		"--"
 }
 
 <BLOCK_COMMENT>{
-	[^\n*)(]+ ;/* Eat comment in chunks */
-  "*" ;/*Eat a lone star*/
-  "(" ;/*Eat a left paren*/
-  ")" ;/*Eat a right paren*/
+  [^\n*)(]+ ; /* Eat the comment in blocks */
+  ")" ; /* Eat a lonely right paren */
+  "(" ; /* Eat a lonely left paren */
+  "*" ; /* Eat a lonely star */
 }
 
   /*
-	 * Can't have EOF in the middle of a block comment
+	   Can't have EOF in the middle of a block comment
 	 */
 <BLOCK_COMMENT><<EOF>>	{
-  /* printf("EOF in comment\n"); */
-	return (ERROR);
+	cool_yylval.error_msg = "EOF in comment";
+  /*
+     Need to return to INITIAL, otherwise the program will be stuck
+     in the infinite loop. Thiw was determined experimentally.
+   */
+  BEGIN(INITIAL);
+	return ERROR;
 }
 
 %%
