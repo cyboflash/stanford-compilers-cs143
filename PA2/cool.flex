@@ -47,6 +47,7 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 unsigned int blockCommentNestingLevel = 0;
+unsigned int columnNo = 1;
 
 %}
 
@@ -172,8 +173,10 @@ INLINE_COMMENT_START		"--"
 <INLINE_COMMENT>\n { BEGIN(INITIAL); }
 
   /* Ignore everything in the inline comment */
-<INLINE_COMMENT>[^\n]*	;
+<INLINE_COMMENT>[^\n]+	;
 
+<*>\n { curr_lineno++; columnNo = 1;}
+<*>[^\n] { columnNo++;}
 
  /*
 	* Block comments.
@@ -181,48 +184,37 @@ INLINE_COMMENT_START		"--"
 	*/
 
 "*)" {
-  printf("Unmatched *)\n");
-  return ERROR;
+	/* printf("Unmatched *)\n"); */
+	return ERROR;
 }
 
-"(*" {
+<INITIAL>"(*" {
 	blockCommentNestingLevel++;
 	BEGIN(BLOCK_COMMENT);
+}
+<BLOCK_COMMENT>"(*" {
+	blockCommentNestingLevel++;
+}
+
+<BLOCK_COMMENT>"*)" {
+	blockCommentNestingLevel--;
+  if (0 == blockCommentNestingLevel)
+		BEGIN(INITIAL);
+}
+
+<BLOCK_COMMENT>{
+	[^\n*)(]+ ;/* Eat comment in chunks */
+  "*" ;/*Eat a lone star*/
+  "(" ;/*Eat a left paren*/
+  ")" ;/*Eat a right paren*/
 }
 
   /*
 	 * Can't have EOF in the middle of a block comment
 	 */
-<BLOCK_COMMENT,BLOCK_COMMENT_END_CHECK><<EOF>>	{
-  printf("EOF in comment\n");
+<BLOCK_COMMENT><<EOF>>	{
+  /* printf("EOF in comment\n"); */
 	return (ERROR);
-}
-
-	/*
-	 * Ignore anything in the block comment except "*"
-	 */
-<BLOCK_COMMENT>[^*]*	;
-
-	/*
-	 * Once a "*" is seen, it could indicate end of a block comment.
-	 */
-<BLOCK_COMMENT>"*"+	{
-	BEGIN(BLOCK_COMMENT_END_CHECK);
-}
-
-<BLOCK_COMMENT_END_CHECK>[^)]*	{
-	BEGIN(BLOCK_COMMENT);
-}
-
-	/*
-	 * Once a ")" is seen, this indicates the end of the block comment.
-	 */
-<BLOCK_COMMENT_END_CHECK>")"	{
-	blockCommentNestingLevel--;
-	if(0 == blockCommentNestingLevel)
-		BEGIN(INITIAL);
-	else
-		BEGIN(BLOCK_COMMENT);
 }
 
 %%
