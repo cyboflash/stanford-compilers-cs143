@@ -47,6 +47,7 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 unsigned int blockCommentNestingLevel = 0;
+unsigned int currStringLen = 0;
 
 %}
 
@@ -234,8 +235,11 @@ WHITESPACE	[\n\f\r\t\v]*
 	BEGIN(INITIAL);
 }
 
-<STRING>"\n" {
-	printf("\nMarker 0\n");
+<STRING>"\\"\n { printf("\nRule 1\n"); }
+
+<STRING>("\\"[^btnf0])+ {
+  printf("\nRule 2\n");
+  printf("\n%s\n", yytext);
 }
 
 %%
