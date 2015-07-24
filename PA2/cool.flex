@@ -244,6 +244,11 @@ WHITESPACE	[\n\f\r\t\v]*
 	   Can't have EOF in the middle of a block comment
 	 */
 <BLOCK_COMMENT><<EOF>>	{
+  /* For some reason when EOF is encountered in a comment the line number in the
+     error is incremented by 1. This does not happen when EOF is encountered in
+     a string. For now temproary fix is to decrement the line count by 1.
+   */
+  curr_lineno--;
 	cool_yylval.error_msg = "EOF in comment";
   /*
      Need to return to INITIAL, otherwise the program will be stuck
