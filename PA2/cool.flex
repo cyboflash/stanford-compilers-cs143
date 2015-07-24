@@ -46,8 +46,23 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+
+/* Macros */
+#define MYECHO(n)            \
+do {                         \
+  printf("\n----------\n");  \
+  printf("Rule " #n "\n");   \
+  ECHO;                      \
+  printf("\n----------\n");  \
+} while(0)
+
+/* Typedefs */
+
+/* Variables */
 unsigned int blockCommentNestingLevel = 0;
 unsigned int currStringLen = 0;
+
+/* Function prototyptes */
 
 %}
 
@@ -229,17 +244,36 @@ WHITESPACE	[\n\f\r\t\v]*
 	 ***************************************************************************/
 \" {
 	BEGIN(STRING);
+  MYECHO(0);
 }
 
 <STRING>\" {
 	BEGIN(INITIAL);
+  MYECHO(4);
 }
 
-<STRING>"\\"\n { printf("\nRule 1\n"); }
+	/* Match <back slash>\n or \n */
+<STRING>\\\n|\n {
+  curr_lineno++;
+  MYECHO(3);
+}
 
-<STRING>("\\"[^btnf0])+ {
-  printf("\nRule 2\n");
-  printf("\n%s\n", yytext);
+<STRING>(\\[^btnf0])+ {
+  MYECHO(1);
+}
+
+	/* String cannot have a '\0', NULL, character in it */
+<STRING>\\0 {
+  MYECHO(7);
+}
+
+<STRING>(\\[btnf])+ {
+  MYECHO(2);
+}
+
+<STRING>[^\\"]* {
+  /* Don't forget to check for empty string */
+  MYECHO(6);
 }
 
 %%
