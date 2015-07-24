@@ -48,13 +48,26 @@ extern YYSTYPE cool_yylval;
  */
 
 /* Macros */
-#define MYECHO(n)            \
-do {                         \
-  printf("\n----------\n");  \
-  printf("Rule " #n "\n");   \
-  ECHO;                      \
-  printf("\n----------\n");  \
-} while(0)
+
+/* For debugging  */
+#define MYECHO(n)              \
+	do {                         \
+		printf("\n----------\n");  \
+		printf("Rule " #n "\n");   \
+		ECHO;                      \
+		printf("\n----------\n");  \
+	} while(0)
+
+/* Check for the current length of the sting. If it doesn't fit into the buffer then
+   generate and error */
+#define CHECK_STRING_LENGTH(l)                            \
+  do {                                                    \
+		if (currStringLen + (l) >= MAX_STR_CONST)             \
+		{                                                     \
+			cool_yylval.error_msg = "String constant too long"; \
+			return ERROR;                                       \
+		}                                                     \
+	} while(0)
 
 /* Typedefs */
 
@@ -188,7 +201,9 @@ WHITESPACE	[\n\f\r\t\v]*
   /****************************************************************************
 		Inline comments
 	 ***************************************************************************/
-"--" { BEGIN(INLINE_COMMENT); }
+"--" {
+  BEGIN(INLINE_COMMENT);
+}
 
   /* Stop inline comment once new line is encountered */
 <INLINE_COMMENT>\n {
@@ -197,7 +212,7 @@ WHITESPACE	[\n\f\r\t\v]*
 }
 
   /* Ignore everything in the inline comment except the new line */
-<INLINE_COMMENT>[^\n]+	{}
+<INLINE_COMMENT>[^\n]*	{}
 
 
   /****************************************************************************
@@ -218,7 +233,7 @@ WHITESPACE	[\n\f\r\t\v]*
 }
 
 <BLOCK_COMMENT>{
-  [^\n*)(]+ ; /* Eat the comment in blocks */
+  [^\n*)(]+ ; /* Eat the comment in chunks */
   ")" ; /* Eat a lonely right paren */
   "(" ; /* Eat a lonely left paren */
   "*" ; /* Eat a lonely star */
@@ -236,44 +251,90 @@ WHITESPACE	[\n\f\r\t\v]*
    */
   BEGIN(INITIAL);
 	return ERROR;
-
 }
 
   /****************************************************************************
 		Strings
 	 ***************************************************************************/
 \" {
+	string_buf_ptr = string_buf;
 	BEGIN(STRING);
-  MYECHO(0);
 }
 
 <STRING>\" {
+  stringtable.add_string(string_buf, MAX_STR_CONST);
 	BEGIN(INITIAL);
-  MYECHO(4);
 }
 
 	/* Match <back slash>\n or \n */
 <STRING>\\\n|\n {
   curr_lineno++;
-  MYECHO(3);
 }
 
-<STRING>(\\[^btnf0])+ {
-  MYECHO(1);
+	/* Match everything except \b, \t, \n, \f, or \0 */
+<STRING>(\\[^btnf0]) {
+  /* check for the length of the string */
+  CHECK_STRING_LENGTH(1);
+
+	/* '\c' should be treated as 'c' */
+  *string_buf_ptr = yytext[1];
+	/* Move on to the next character */
+  string_buf_ptr++;
 }
 
-	/* String cannot have a '\0', NULL, character in it */
 <STRING>\\0 {
-  MYECHO(7);
+	/* String may not have a '\0', NULL character */
+  cool_yylval.error_msg = "String contains null character";
+  return ERROR;
 }
 
-<STRING>(\\[btnf])+ {
-  MYECHO(2);
+<STRING><<EOF>> {
+	/* String may not have an EOF character */
+  cool_yylval.error_msg = "String contains EOF character";
+
+  /*
+     Need to return to INITIAL, otherwise the program will be stuck
+     in the infinite loop. Thiw was determined experimentally.
+   */
+  BEGIN(INITIAL);
+  return ERROR;
 }
 
+	/* Match \b, \t, \n and \f */
+<STRING>(\\[btnf]) {
+  /* check for the length of the string */
+  CHECK_STRING_LENGTH(1);
+
+  char c;
+  switch(yytext[1])
+	{
+    case 'b':
+      c = '\b';
+      break;
+    case 't':
+      c = '\t';
+      break;
+    case 'n':
+      c = '\n';
+      break;
+    case 'f':
+      c = '\f';
+      break;
+    default:
+			cool_yylval.error_msg = "Unkown error in lexer. " \
+                              "This should not have happened, but it did. " \
+                              "Because this happened, it means that monkeys can fly.";
+			return ERROR;
+	}
+  *string_buf_ptr = c;
+  string_buf_ptr++;
+}
+
+	/* Match everything except '\' and '"' */
 <STRING>[^\\"]* {
-  /* Don't forget to check for empty string */
-  MYECHO(6);
+  CHECK_STRING_LENGTH(yyleng);
+  strcpy(string_buf_ptr, yytext);
+  string_buf_ptr += yyleng;
 }
 
 %%
