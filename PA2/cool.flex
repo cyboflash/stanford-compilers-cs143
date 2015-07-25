@@ -252,7 +252,7 @@ WHITESPACE	[\n\f\r\t\v]*
 	cool_yylval.error_msg = "EOF in comment";
   /*
      Need to return to INITIAL, otherwise the program will be stuck
-     in the infinite loop. Thiw was determined experimentally.
+     in the infinite loop. This was determined experimentally.
    */
   BEGIN(INITIAL);
 	return ERROR;
@@ -299,7 +299,7 @@ WHITESPACE	[\n\f\r\t\v]*
 
   /*
      Need to return to INITIAL, otherwise the program will be stuck
-     in the infinite loop. Thiw was determined experimentally.
+     in the infinite loop. This was determined experimentally.
    */
   BEGIN(INITIAL);
   return ERROR;
