@@ -268,8 +268,8 @@ WHITESPACE	[\n\f\r\t\v]*
 
 <STRING>\" {
   stringtable.add_string(string_buf, MAX_STR_CONST);
-  return STR_CONST;
 	BEGIN(INITIAL);
+  return STR_CONST;
 }
 
 	/* Match <back slash>\n or \n */
