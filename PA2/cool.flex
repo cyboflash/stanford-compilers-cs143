@@ -90,29 +90,6 @@ unsigned int currStringLen = 0;
   * Define names for regular expressions here.
   */
 
-  /* (?:pattern) makes pattern case insensitive */
-CLASS		(?:class)
-ELSE		(?:else)
-FI			(?:fi)
-IF			(?:if)
-IN			(?:in)
-INHERITS			(?:inherits)
-LET			(?:let)
-LOOP			(?:loop)
-POOL			(?:pool)
-THEN			(?:then)
-WHILE			(?:while)
-CASE			(?:case)
-ESAC			(?:esac)
-OF			(?:of)
-DARROW	=>
-NEW			(?:new)
-ISVOID			(?:isvoid)
-INT_CONST		[0-9]+
-BOOL_CONST	t(?:rue)|f(?:alse)
-ASSIGN		=
-NOT		(?:not)
-LE		<=
 
 WHITESPACE	[\n\f\r\t\v]*
   /*
@@ -360,6 +337,42 @@ WHITESPACE	[\n\f\r\t\v]*
 	cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST;
 }
+
+  /****************************************************************************
+		Keywords
+	 ***************************************************************************/
+  /* (?:pattern) makes pattern case insensitive */
+(?i:class)          { return CLASS; }
+(?i:else)           { return ELSE; }
+(?i:fi)             { return FI; }
+(?i:if)             { return IF; }
+(?i:in)             { return IN; }
+(?i:inherits)       { return INHERITS; }
+(?i:let)            { return LET; }
+(?i:loop)           { return LOOP; }
+(?i:pool)           { return POOL; }
+(?i:then)           { return THEN; }
+(?i:while)          { return WHILE; }
+(?i:case)           { return CASE; }
+(?i:esac)           { return ESAC; }
+(?i:of)             { return OF; }
+(?i:new)            { return NEW; }
+(?i:isvoid)         { return ISVOID; }
+(?i:not)            { return NOT; }
+t(?i:rue) {
+  cool_yylval.boolean = 1;
+	return BOOL_CONST;
+}
+f(?i:alse) {
+  cool_yylval.boolean = 0;
+	return BOOL_CONST;
+}
+  /****************************************************************************
+		Operators
+	 ***************************************************************************/
+	/* LE		<= */
+	/* DARROW	=> */
+	/* ASSIGN		<- */
 
 %%
 /* User code.
