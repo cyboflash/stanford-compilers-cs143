@@ -118,53 +118,6 @@ WHITESPACE	[\n\f\r\t\v]*
   * (this feature is present for POSIX compliance)
   */
 
-
- /*
-  *  The multiple-character operators.
-  */
-	/* {DARROW}	{ return (DARROW); } */
-	/*  */
-	/* {INT_CONST}		{ return (INT_CONST); } */
-	/* {ASSIGN}		{ return (ASSIGN); } */
-
- /*
-  * Keywords are case-insensitive except for the values true and false,
-  * which must begin with a lower-case letter.
-  */
-	/* {CLASS}			{ return (CLASS); } */
-	/* {ELSE}			{ return (ELSE); } */
-	/* {FI}			{ return (FI); } */
-	/* {IF}			{ return (IF); } */
-	/* {IN}			{ return (IN); } */
-	/* {INHERITS}			{ return (INHERITS); } */
-	/* {LET}			{ return (LET); } */
-	/* {LOOP}			{ return (LOOP); } */
-	/* {POOL}			{ return (POOL); } */
-	/* {THEN}			{ return (THEN); } */
-	/* {WHILE}			{ return (WHILE); } */
-	/* {CASE}			{ return (CASE); } */
-	/* {ESAC}			{ return (ESAC); } */
-	/* {OF}			{ return (OF); } */
-	/* {NEW}			{ return (NEW); } */
-	/* {ISVOID}			{ return (ISVOID); } */
-	/* {NOT}		{ return (NOT); } */
-	/* {LE}		{ return (LE); } */
-
- /*
-  *  Boolean constants
-	*  Save matched text and return the token
-	*/
-	/* {BOOL_CONST} { */
-	/*	return (BOOL_CONST); */
-	/* } */
-
- /*
-  *  String constants (C syntax)
-  *  Escape sequence \c is accepted for all characters c. Except for
-  *  \n \t \b \f, the result is c.
-  *
-  */
-
 \n { curr_lineno++; }
 
   /* Generate an error if the end of the block comment is found,
@@ -175,9 +128,9 @@ WHITESPACE	[\n\f\r\t\v]*
 	return ERROR;
 }
 
-  /****************************************************************************
-		Inline comments
-	 ***************************************************************************/
+ /****************************************************************************
+	Inline comments
+  ***************************************************************************/
 "--" {
   BEGIN(INLINE_COMMENT);
 }
@@ -235,9 +188,13 @@ WHITESPACE	[\n\f\r\t\v]*
 	return ERROR;
 }
 
-  /****************************************************************************
-		Strings
-	 ***************************************************************************/
+ /****************************************************************************
+ 	Strings
+
+  String constants (C syntax)
+  Escape sequence \c is accepted for all characters c. Except for
+  \n \t \b \f, the result is c.
+  ***************************************************************************/
 \" {
 	string_buf_ptr = string_buf;
 	BEGIN(STRING);
@@ -323,9 +280,9 @@ WHITESPACE	[\n\f\r\t\v]*
   string_buf_ptr += yyleng;
 }
 
-  /****************************************************************************
-		Integers
-	 ***************************************************************************/
+ /****************************************************************************
+	Integers
+  ***************************************************************************/
 -?[0-9]+ {
   /*Check for the length of the sting */
   if (yyleng >= MAX_STR_CONST)
@@ -338,10 +295,13 @@ WHITESPACE	[\n\f\r\t\v]*
   return INT_CONST;
 }
 
-  /****************************************************************************
-		Keywords
-	 ***************************************************************************/
-  /* (?:pattern) makes pattern case insensitive */
+ /****************************************************************************
+ 	 Keywords
+
+   Keywords are case-insensitive except for the values true and false,
+   which must begin with a lower-case letter.
+  ***************************************************************************/
+ /* (?:pattern) makes pattern case insensitive */
 (?i:class)          { return CLASS; }
 (?i:else)           { return ELSE; }
 (?i:fi)             { return FI; }
@@ -367,12 +327,28 @@ f(?i:alse) {
   cool_yylval.boolean = 0;
 	return BOOL_CONST;
 }
-  /****************************************************************************
-		Operators
-	 ***************************************************************************/
-	/* LE		<= */
-	/* DARROW	=> */
-	/* ASSIGN		<- */
+ /****************************************************************************
+	 Operators
+  ***************************************************************************/
+"<=" { return LE; }
+"=>" { return DARROW; }
+"<-" { return ASSIGN; }
+"."  { return int('.'); }
+"@"  { return int('@'); }
+"~"  { return int('~'); }
+"+"  { return int('+'); }
+"-"  { return int('-'); }
+"*"  { return int(':'); }
+"/"  { return int('/'); }
+"("  { return int('('); }
+")"  { return int(')'); }
+"{"  { return int('{'); }
+"}"  { return int('}'); }
+"<"  { return int('<'); }
+"="  { return int('='); }
+";"  { return int(';'); }
+","  { return int(','); }
+":"  { return int(':'); }
 
 %%
 /* User code.
