@@ -90,15 +90,6 @@ unsigned int currStringLen = 0;
   * Define names for regular expressions here.
   */
 
-
-WHITESPACE	[\n\f\r\t\v]*
-  /*
-   LET_STMT
-   EOF
-   TYPEID
-   OBJECTID
-   */
-
 %%
 
  /* Rules
