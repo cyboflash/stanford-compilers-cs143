@@ -206,7 +206,7 @@ unsigned int currStringLen = 0;
 }
 
 	/* Match everything except \b, \t, \n, \f, or \0 */
-<STRING>(\\[^btnf0]) {
+<STRING>(\\[^btnf]) {
   /* check for the length of the string */
   CHECK_STRING_LENGTH(1);
 
@@ -216,7 +216,7 @@ unsigned int currStringLen = 0;
   string_buf_ptr++;
 }
 
-<STRING>\\0 {
+<STRING>\0 {
 	/* String may not have a '\0', NULL character */
   cool_yylval.error_msg = "String contains null character";
   return ERROR;
@@ -322,7 +322,7 @@ f(?i:alse) {
 "~"  { return int('~'); }
 "+"  { return int('+'); }
 "-"  { return int('-'); }
-"*"  { return int(':'); }
+"*"  { return int('*'); }
 "/"  { return int('/'); }
 "("  { return int('('); }
 ")"  { return int(')'); }
