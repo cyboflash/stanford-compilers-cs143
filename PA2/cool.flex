@@ -283,14 +283,7 @@ WHITESPACE	[\n\f\r\t\v]*
  /****************************************************************************
 	Integers
   ***************************************************************************/
--?[0-9]+ {
-  /*Check for the length of the sting */
-  if (yyleng >= MAX_STR_CONST)
-  {
-    cool_yylval.error_msg = "Integer constant too long";
-    return ERROR;
-	}
-
+[0-9]+ {
 	cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST;
 }
@@ -328,7 +321,7 @@ f(?i:alse) {
 	return BOOL_CONST;
 }
  /****************************************************************************
-	 Operators
+	 Operators and special symbols
   ***************************************************************************/
 "<=" { return LE; }
 "=>" { return DARROW; }
@@ -349,6 +342,33 @@ f(?i:alse) {
 ";"  { return int(';'); }
 ","  { return int(','); }
 ":"  { return int(':'); }
+
+ /****************************************************************************
+   Type identifier and object identifier
+  ***************************************************************************/
+[A-Z][a-zA-Z0-9_]* {
+  cool_yylval.symbol = idtable.add_string(yytext);
+  return TYPEID;
+}
+
+[a-z][a-zA-Z0-9_]* {
+  cool_yylval.symbol = idtable.add_string(yytext);
+  return OBJECTID;
+}
+
+
+ /****************************************************************************
+   Whitespace
+  ***************************************************************************/
+[ \t\f\r\v]+ { }
+
+ /****************************************************************************
+   Everything else is an illegal token
+  ***************************************************************************/
+[^\n] {
+  cool_yylval.error_msg = yytext;
+  return ERROR;
+}
 
 %%
 /* User code.
