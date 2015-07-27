@@ -267,7 +267,10 @@ WHITESPACE	[\n\f\r\t\v]*
 }
 
 <STRING>\" {
-  stringtable.add_string(string_buf, MAX_STR_CONST);
+  /* Mark the end of the string */
+  *string_buf_ptr = '\0';
+
+  cool_yylval.symbol = stringtable.add_string(string_buf);
 	BEGIN(INITIAL);
   return STR_CONST;
 }
@@ -346,9 +349,17 @@ WHITESPACE	[\n\f\r\t\v]*
   /****************************************************************************
 		Integers
 	 ***************************************************************************/
-[0-9]+ {
-}
+-?[0-9]+ {
+  /*Check for the length of the sting */
+  if (yyleng >= MAX_STR_CONST)
+  {
+    cool_yylval.error_msg = "Integer constant too long";
+    return ERROR;
+	}
 
+	cool_yylval.symbol = inttable.add_string(yytext);
+  return INT_CONST;
+}
 
 %%
 /* User code.
