@@ -188,6 +188,7 @@ unsigned int currStringLen = 0;
   ***************************************************************************/
 \" {
 	string_buf_ptr = string_buf;
+  MYECHO(0);
 	BEGIN(STRING);
 }
 
@@ -200,15 +201,11 @@ unsigned int currStringLen = 0;
   return STR_CONST;
 }
 
-	/* Match <back slash>\n or \n */
-<STRING>\\\n|\n {
-  curr_lineno++;
-}
-
 	/* Match everything except \b, \t, \n, \f, or \0 */
-<STRING>(\\[^btnf]) {
+<STRING>(\\[^btnf]+) {
   /* check for the length of the string */
   CHECK_STRING_LENGTH(1);
+  MYECHO(1);
 
 	/* '\c' should be treated as 'c' */
   *string_buf_ptr = yytext[1];
@@ -216,7 +213,23 @@ unsigned int currStringLen = 0;
   string_buf_ptr++;
 }
 
+	/* Match <back slash>\n or \n */
+<STRING>"\\"\n {
+  CHECK_STRING_LENGTH(1);
+  *string_buf_ptr = '\n';
+  string_buf_ptr++;
+  curr_lineno++;
+}
+
+<STRING>\n {
+  MYECHO(2);
+  cool_yylval.error_msg = "Unterminated string constant";
+  curr_lineno++;
+  return ERROR;
+}
+
 <STRING>\0 {
+  MYECHO(3);
 	/* String may not have a '\0', NULL character */
   cool_yylval.error_msg = "String contains null character";
   return ERROR;
@@ -236,6 +249,7 @@ unsigned int currStringLen = 0;
 
 	/* Match \b, \t, \n and \f */
 <STRING>(\\[btnf]) {
+  MYECHO(4);
   /* check for the length of the string */
   CHECK_STRING_LENGTH(1);
 
@@ -257,7 +271,7 @@ unsigned int currStringLen = 0;
     default:
 			cool_yylval.error_msg = "Unkown error in lexer. " \
                               "This should not have happened, but it did. " \
-                              "Because this happened, it means that monkeys can fly.";
+                              "This means that monkeys can fly.";
 			return ERROR;
 	}
   *string_buf_ptr = c;
@@ -265,7 +279,8 @@ unsigned int currStringLen = 0;
 }
 
 	/* Match everything except '\' and '"' */
-<STRING>[^\\"]* {
+<STRING>[^\\"\n]+ {
+  MYECHO(5);
   CHECK_STRING_LENGTH(yyleng);
   strcpy(string_buf_ptr, yytext);
   string_buf_ptr += yyleng;
