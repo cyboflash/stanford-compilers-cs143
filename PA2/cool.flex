@@ -60,13 +60,17 @@ extern YYSTYPE cool_yylval;
 
 /* Check for the current length of the sting. If it doesn't fit into the buffer then
    generate and error */
-#define CHECK_STRING_LENGTH(l)                            \
-  do {                                                    \
-		if (currStringLen + (l) >= MAX_STR_CONST)             \
-		{                                                     \
-			cool_yylval.error_msg = "String constant too long"; \
-			return ERROR;                                       \
-		}                                                     \
+#define CHECK_STRING_LENGTH(l)                              \
+  do {                                                      \
+    if (!errorInString)                                     \
+		{                                                       \
+			if (currStringLen + (l) >= MAX_STR_CONST)             \
+			{                                                     \
+				cool_yylval.error_msg = "String constant too long"; \
+				errorInString = true;                               \
+				return ERROR;                                       \
+			}                                                     \
+		}                                                       \
 	} while(0)
 
 /* Typedefs */
@@ -74,6 +78,7 @@ extern YYSTYPE cool_yylval;
 /* Variables */
 unsigned int blockCommentNestingLevel = 0;
 unsigned int currStringLen = 0;
+bool errorInString = false;
 
 /* Function prototyptes */
 
@@ -187,109 +192,155 @@ unsigned int currStringLen = 0;
   \n \t \b \f, the result is c.
   ***************************************************************************/
 \" {
+  currStringLen = 0;
+  errorInString = false;
 	string_buf_ptr = string_buf;
-  MYECHO(0);
 	BEGIN(STRING);
 }
 
 <STRING>\" {
-  /* Mark the end of the string */
-  *string_buf_ptr = '\0';
-
-  cool_yylval.symbol = stringtable.add_string(string_buf);
 	BEGIN(INITIAL);
-  return STR_CONST;
+  if (!errorInString)
+	{
+		/* Mark the end of the string */
+		*string_buf_ptr = '\0';
+
+		cool_yylval.symbol = stringtable.add_string(string_buf);
+		return STR_CONST;
+	}
 }
 
-	/* Match everything except \b, \t, \n, \f, or \0 */
-<STRING>(\\[^btnf]+) {
-  /* check for the length of the string */
-  CHECK_STRING_LENGTH(1);
-  MYECHO(1);
-
-	/* '\c' should be treated as 'c' */
-  *string_buf_ptr = yytext[1];
-	/* Move on to the next character */
-  string_buf_ptr++;
-}
-
-	/* Match <back slash>\n or \n */
-<STRING>"\\"\n {
-  CHECK_STRING_LENGTH(1);
-  *string_buf_ptr = '\n';
-  string_buf_ptr++;
-  curr_lineno++;
-}
-
+	/* Match a lonely <new line> */
 <STRING>\n {
-  MYECHO(2);
-  cool_yylval.error_msg = "Unterminated string constant";
+	curr_lineno++;
+  if (!errorInString)
+	{
+		cool_yylval.error_msg = "Unterminated string constant";
+		BEGIN(INITIAL);
+		errorInString = true;
+		return ERROR;
+	}
+  else /* Lexing should restart after an unescaped new line */
+    BEGIN(INITIAL);
+}
+	/* Match everything except \b, \t, \n, \f, \<new line> and \<null> */
+<STRING>\\[^btnf\n\0] {
+  if (!errorInString)
+	{
+		/* check for the length of the string */
+		CHECK_STRING_LENGTH(1);
+
+		/* '\c' should be treated as 'c' */
+		*string_buf_ptr = yytext[1];
+		/* Move on to the next character */
+		string_buf_ptr++;
+		currStringLen++;
+	}
+}
+
+	/* Match \<new line> */
+<STRING>\\\n {
   curr_lineno++;
-  return ERROR;
+  if (!errorInString)
+	{
+		CHECK_STRING_LENGTH(1);
+		*string_buf_ptr = '\n';
+		string_buf_ptr++;
+		currStringLen++;
+	}
 }
 
+	/* match \<null> */
+<STRING>\\\0 {
+  if (!errorInString)
+	{
+		/* String may not have a \<null>	*/
+		cool_yylval.error_msg = "String contains escaped null character.";
+		string_buf_ptr = string_buf;
+		errorInString = true;
+		return ERROR;
+	}
+}
+
+	/* match <null> */
 <STRING>\0 {
-  MYECHO(3);
-	/* String may not have a '\0', NULL character */
-  cool_yylval.error_msg = "String contains null character";
-  return ERROR;
+  if (!errorInString)
+	{
+		/* String may not have a <null> */
+		cool_yylval.error_msg = "String contains null character.";
+		errorInString = true;
+		return ERROR;
+	}
 }
 
+  /* Match <end of file> */
 <STRING><<EOF>> {
-	/* String may not have an EOF character */
-  cool_yylval.error_msg = "String contains EOF character";
+  if (!errorInString)
+	{
+		/* String may not have an EOF character */
+		cool_yylval.error_msg = "String contains EOF character";
 
-  /*
-     Need to return to INITIAL, otherwise the program will be stuck
-     in the infinite loop. This was determined experimentally.
-   */
-  BEGIN(INITIAL);
-  return ERROR;
+		/*
+			 Need to return to INITIAL, otherwise the program will be stuck
+			 in the infinite loop. This was determined experimentally.
+		 */
+		BEGIN(INITIAL);
+    errorInString = true;
+		return ERROR;
+	}
 }
 
 	/* Match \b, \t, \n and \f */
-<STRING>(\\[btnf]) {
-  MYECHO(4);
-  /* check for the length of the string */
-  CHECK_STRING_LENGTH(1);
-
-  char c;
-  switch(yytext[1])
+<STRING>\\[btnf] {
+  if (!errorInString)
 	{
-    case 'b':
-      c = '\b';
-      break;
-    case 't':
-      c = '\t';
-      break;
-    case 'n':
-      c = '\n';
-      break;
-    case 'f':
-      c = '\f';
-      break;
-    default:
-			cool_yylval.error_msg = "Unkown error in lexer. " \
-                              "This should not have happened, but it did. " \
-                              "This means that monkeys can fly.";
-			return ERROR;
+		/* check for the length of the string */
+		CHECK_STRING_LENGTH(1);
+
+		char c;
+		switch(yytext[1])
+		{
+			case 'b':
+				c = '\b';
+				break;
+			case 't':
+				c = '\t';
+				break;
+			case 'n':
+				c = '\n';
+				break;
+			case 'f':
+				c = '\f';
+				break;
+			default:
+				cool_yylval.error_msg = "Unkown error in lexer. " \
+																 "This should not have happened, but it did. " \
+																 "This means that monkeys can fly.";
+				errorInString = true;
+				return ERROR;
+		}
+		*string_buf_ptr = c;
+		string_buf_ptr++;
+		currStringLen++;
 	}
-  *string_buf_ptr = c;
-  string_buf_ptr++;
 }
 
-	/* Match everything except '\' and '"' */
-<STRING>[^\\"\n]+ {
-  MYECHO(5);
-  CHECK_STRING_LENGTH(yyleng);
-  strcpy(string_buf_ptr, yytext);
-  string_buf_ptr += yyleng;
+	/* Match everything except '\', '"', <new line> and <null> */
+<STRING>[^\\"\n\0]+ {
+  if (!errorInString)
+	{
+		CHECK_STRING_LENGTH(yyleng);
+		strcpy(string_buf_ptr, yytext);
+		string_buf_ptr += yyleng;
+		currStringLen += yyleng;
+	}
 }
 
  /****************************************************************************
 	Integers
   ***************************************************************************/
 [0-9]+ {
+  /* Spec says there is no need to check for the length of the integer. */
 	cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST;
 }
@@ -332,22 +383,22 @@ f(?i:alse) {
 "<=" { return LE; }
 "=>" { return DARROW; }
 "<-" { return ASSIGN; }
-"."  { return int('.'); }
-"@"  { return int('@'); }
-"~"  { return int('~'); }
-"+"  { return int('+'); }
-"-"  { return int('-'); }
-"*"  { return int('*'); }
-"/"  { return int('/'); }
-"("  { return int('('); }
-")"  { return int(')'); }
-"{"  { return int('{'); }
-"}"  { return int('}'); }
-"<"  { return int('<'); }
-"="  { return int('='); }
-";"  { return int(';'); }
-","  { return int(','); }
-":"  { return int(':'); }
+"."  { return '.'; }
+"@"  { return '@'; }
+"~"  { return '~'; }
+"+"  { return '+'; }
+"-"  { return '-'; }
+"*"  { return '*'; }
+"/"  { return '/'; }
+"("  { return '('; }
+")"  { return ')'; }
+"{"  { return '{'; }
+"}"  { return '}'; }
+"<"  { return '<'; }
+"="  { return '='; }
+";"  { return ';'; }
+","  { return ','; }
+":"  { return ':'; }
 
  /****************************************************************************
    Type identifier and object identifier
